@@ -12,13 +12,13 @@
 				<div class="panel panel-primary">
 					<div class="panel-heading">Login</div>
 						<div class="panel-body">
-							<form class="form-horizontal" role="form">
+							<form class="form-horizontal" method="post" action="{{url_for('formDetails')}}" role="form" class="form-submit">
 								<div class="form-group">
 									<label for="username" class="col-sm-3 control-label">Username</label>
 									<div class="col-sm-9">
 										<div class="input-group">
 											<span class="input-group-addon glyphicon glyphicon-user"></span>
-											<input type="text" class="form-control" id="username" placeholder="ASURITE Username">
+											<input type="text" class="form-control" id="username" name="username" placeholder="ASURITE Username">
 										</div>
 									</div>
 								</div>
@@ -27,7 +27,7 @@
 									<div class="col-sm-9">
 										<div class="input-group">
 										<span class="input-group-addon glyphicon glyphicon-lock"></span>
-											<input type="password" class="form-control" id="password" placeholder="ASURITE Password">
+											<input type="password" name="password" class="form-control" id="password" placeholder="ASURITE Password">
 										</div>
 									</div>
 								</div>
