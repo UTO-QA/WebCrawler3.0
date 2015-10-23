@@ -1,29 +1,44 @@
+import settings
+from variables import Globals
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+import time
 
 class Crawler:
-	global driver
-	driver = webdriver.Firefox();
-	def login(self,username,password):
+	def login(self,username,password,website):
+		import re
 		# get request to MyASU login portal
-		driver.get("https://webapp4.asu.edu/myasu/")
+		Globals.driver.get("https://webapp4.asu.edu/myasu/")
 		try:
 			# wait for sign-in button
-			signIn = WebDriverWait(driver,20).until(
+			signIn = WebDriverWait(Globals.driver,20).until(
 				EC.presence_of_element_located((By.ID,"login_submit"))
 				)
 			# grab username and password elements
-			user = driver.find_element_by_id("username")
-			passW = driver.find_element_by_id("password")
+			user = Globals.driver.find_element_by_id("username")
+			passW = Globals.driver.find_element_by_id("password")
 			# attempt login to myASU
 			user.send_keys(username)
 			passW.send_keys(password)
-			driver.find_element_by_class_name("submit").click()
-			WebDriverWait(driver,20).until(
+			Globals.driver.find_element_by_class_name("submit").click()
+			WebDriverWait(Globals.driver,20).until(
 				EC.presence_of_element_located((By.ID,"asu_footer"))
 				)
+		except TimeoutException:
+			print "Exception!"
+			Globals.driver.back()
+			Globals.driver.back()
 		finally:
-			driver.quit()
+			src = Globals.driver.page_source
+			loggedIn = 'My ASU'
+			isSignedIn = loggedIn in src
+			if isSignedIn:
+				print "You're good!"
+				Globals.driver.get(website)
+			else:
+				print "Try again"
+
