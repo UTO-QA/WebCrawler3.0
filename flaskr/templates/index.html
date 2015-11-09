@@ -12,7 +12,7 @@
 				<div class="panel panel-primary">
 					<div class="panel-heading">Login</div>
 						<div class="panel-body">
-							<form class="form-horizontal" method="post" action="{{url_for('formDetails')}}" role="form" class="form-submit">
+							<form class="form-horizontal" method="post" action="{{url_for('formDetails')}}" role="form" class="form-submit" enctype="multipart/form-data">
 								<div class="form-group">
 									<label for="username" class="col-sm-3 control-label">Username</label>
 									<div class="col-sm-9">
@@ -56,6 +56,14 @@
 									<div class="col-sm-9">
 										<div class="input-group">
 											<input type="text" name="website" class="form-control" id="website" placeholder="Website to Crawl">
+										</div>
+									</div>
+								</div>
+								<div class="form-group">
+									<label for="website" class="col-sm-3 control-label">Choose Baseline</label>
+									<div class="col-sm-9">
+										<div class="input-group">
+											<input type="file" name="filename" id="filename" value="Choose File"/>
 										</div>
 									</div>
 								</div>
