@@ -5,21 +5,24 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 import time
 import requests
 import xlsxwriter
 import datetime as dt
 from bs4 import BeautifulSoup
-import sys
+import sys, os
+import openpyxl
+import re
 
 class Crawler:
 	global website
+	filename = ''
 	tabName = ''
 	opt = ''
 	date = dt.datetime.today().strftime("%m-%d-%Y")
 	file = open('logs.txt','a')
-	workbook =  xlsxwriter.Workbook(date)
+	global workbook
 	'''def spiderCrawler(self,site,username,password):
 		s = requests.Session()
 		file = open("output.txt",'a')
@@ -75,15 +78,19 @@ class Crawler:
 	def goToAllLinks(self,site):
 		print Crawler.opt
 		print Crawler.date
-		links = ['student/finances']
-		addLater = ['student/campusservices','student/profile',
+		Crawler.workbook = xlsxwriter.Workbook(Crawler.date+"_"+Crawler.opt+".xlsx")
+		links = ['student/finances','student/campusservices','student/profile',
 				'staff/resources','staff/service','staff/profile','student']
+		addLater = ['student/finances']
 		for link in links:
 			linkSplit = link.split('/')
 			Crawler.tabName = link
 			currentLink = site+link
 			print currentLink
 			self.captureLinks(currentLink)
+		print "Returned to goToAllLinks"
+		self.compareWithBaseline()
+		print "Exiting."
 
 	def captureLinks(self,site):
 		global linkSet
@@ -95,15 +102,16 @@ class Crawler:
 		# WebDriverWait(Globals.driver,10).until(self.readystate() == True)
 		try:
 			# wait for page to load
-			WebDriverWait(Globals.driver,15).until(
+			'''WebDriverWait(Globals.driver,15).until(
 				EC.presence_of_element_located((By.ID,"asu_footer"))
-				)
-			Globals.driver.implicitly_wait(15)
+				)'''
+			WebDriverWait(Globals.driver,15).until(self.ajax_complete,"Timeout waiting for Ajax")
+			# Globals.driver.implicitly_wait(15)
 		except TimeoutException:
 			# timeout
 			print "Timeout"
 		# capture all anchor tags on the page
-		links = Globals.driver.find_elements_by_tag_name('a')
+		links = Globals.driver.find_elements_by_css_selector('a[href]')
 		print str(len(links))
 		# iterate over all the links on the page
 		for link in links:
@@ -141,9 +149,74 @@ class Crawler:
 			worksheet.write(row,col,windowTitle)
 			worksheet.write(row,col+1,link)
 			row += 1
+		print "function writeToFile executed"
+		# Crawler.workbook.close()
+		# file.close()
+
+	def compareWithBaseline(self):
 		Crawler.workbook.close()
+		workbookBaseline = openpyxl.load_workbook(os.path.join(settings.app.config['UPLOAD_FOLDER'], Crawler.filename))
+		workbookCurrent = openpyxl.load_workbook(Crawler.date+"_"+Crawler.opt+".xlsx")
+		name = os.path.join(settings.app.config['UPLOAD_FOLDER'], Crawler.filename)
+		print name
+		print Crawler.date
+		print "Loaded baseline file"
+		newLinksFile = open('newLinks_'+Crawler.opt+'_'+Crawler.date+'.txt','a')
+		removedLinksFile = open('removedLinks_'+Crawler.opt+'_'+Crawler.date+'.txt','a')
+		for (sheetBaseline,sheetCurrent) in zip(workbookBaseline,workbookCurrent):
+			baselineSet = set()
+			currentSet = set()
+			print sheetBaseline
+			print sheetCurrent
+			rowsBaseline = sheetBaseline.get_highest_row()
+			rowsCurrent = sheetCurrent.get_highest_row()
+			print "Entering for loop for sheet iteration"
+			for row in range(1,rowsBaseline):
+				print "Created set for baseline"
+				cell_name = "{}{}".format("B",row)
+				print cell_name
+				currentString = sheetBaseline[cell_name].value
+				if "-qa" in currentString:
+					# currentString = re.sub('https://[^/]+/','',currentString)
+					tempString = currentString.replace("-qa","")
+					baselineSet.add(tempString)
+				else:	
+					baselineSet.add(currentString)
+			for row in range(1,rowsCurrent):
+				print "Created set for current link"
+				cell_name = "{}{}".format("B",row)
+				currentString = sheetCurrent[cell_name].value
+				if "-qa" in currentString:
+					# currentString = re.sub('https://[^/]+/','',currentString)
+					tempString = currentString.replace("-qa","")
+					currentSet.add(tempString)
+				else:
+					currentSet.add(currentString)
+			removedLinksList = list(baselineSet - currentSet)
+			print "Removed links list created"
+			for deletedLink in removedLinksList:
+				print deletedLink
+			addedLinksList = list(currentSet - baselineSet)
+			for newLink in addedLinksList:
+				print newLink	
+			print "Added links list created"
+			removedLinksFile.write("\n%s\n" % "Tab: "+sheetBaseline.title)
+			for entry in removedLinksList:
+				removedLinksFile.write("%s\n" % ""+entry)
+			newLinksFile.write("%s\n" % "Tab: "+sheetBaseline.title)
+			for entry in addedLinksList:
+				newLinksFile.write("%s\n" % ""+entry)
+		print "Closing all files"
+		newLinksFile.close()
+		removedLinksFile.close()
 		file.close()
 
+
+	def ajax_complete(self,driver):
+	    try:
+	        return 0 == driver.execute_script("return jQuery.active")
+	    except WebDriverException:
+	        pass
 
 	def readystate(self):
 		result = Globals.driver.execute_script("return document.readyState;")
@@ -160,7 +233,8 @@ class Crawler:
 		# get request to MyASU login portal
 		Globals.driver.get("https://webapp4.asu.edu/myasu/")
 		print option
-		print fileName
+		Crawler.filename = fileName
+		print Crawler.filename
 		Crawler.opt = option
 		if option == "QA":
 			website = "https://webapp4-qa.asu.edu/myasu/"
